@@ -1,0 +1,5 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/RatMoneyTargets.cmake")
+
+check_required_components(RatMoney)
