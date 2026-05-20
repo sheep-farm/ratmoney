@@ -10,9 +10,9 @@ int main() {
   Currency usd(100000, {1,  1}, iso4217::USD);
   Currency brl(100000, {1,  5}, iso4217::BRL);
   Currency eur(100000, {1,  2}, iso4217::EUR);
-  Currency jpy( 10000, {1,  1}, iso4217::JPY);  // precision=0: sem decimais
+  Currency jpy( 10000, {1,  1}, iso4217::JPY);  // precision=0: no decimal places
 
-  // operações básicas
+  // basic operations
   auto r_add = usd.add(brl);
   auto r_sub = usd.subtract(brl);
   auto r_eur_add = eur.add(brl);
@@ -25,9 +25,9 @@ int main() {
   std::cout << usd << " - " << brl << " = " << *r_sub     << '\n';
   std::cout << eur << " + " << brl << " = " << *r_eur_add << '\n';
   std::cout << eur << " - " << brl << " = " << *r_eur_sub << '\n';
-  std::cout << jpy << " (sem casas decimais)\n";
+  std::cout << jpy << " (no decimal places)\n";
 
-  // scale com diferentes modos de arredondamento
+  // scale with different rounding modes
   Currency c(150, {1, 1}, iso4217::USD);
   auto half_even = c.scale({1, 100}, RoundingMode::HalfEven);
   auto half_up   = c.scale({1, 100}, RoundingMode::HalfUp);
@@ -46,7 +46,7 @@ int main() {
   if (!ratio) return EXIT_FAILURE;
   std::cout << "\nUSD / BRL = " << *ratio << '\n';
 
-  // serialização round-trip
+  // serialization round-trip
   auto s = usd.serialize();
   auto r = Currency::deserialize(s);
   if (!r) return EXIT_FAILURE;
@@ -66,7 +66,7 @@ int main() {
   std::cout << "  effectiveBid=" << er.effectiveBid()
             << "  effectiveAsk=" << er.effectiveAsk()
             << "  midpoint="     << er.midpoint()     << '\n';
-  std::cout << "  válida: " << (er.isValid() ? "sim" : "não") << '\n';
+  std::cout << "  valid: " << (er.isValid() ? "yes" : "no") << '\n';
 
   // convert via free function
   auto r_conv = convert(usd, er.effectiveAsk(), iso4217::BRL);
