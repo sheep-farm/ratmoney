@@ -22,7 +22,7 @@ Rational::Rational(int64_t n, int64_t d) {
   __int128 g  = gcd128((__int128)n, (__int128)d);
   __int128 rn = (__int128)n / g;
   __int128 rd = (__int128)d / g;
-  // Sign normalization via __int128 — evita overflow com d == INT64_MIN
+  // sign normalization via __int128 — avoids overflow when d == INT64_MIN
   if (rd < 0) { rn = -rn; rd = -rd; }
   if (rd > (__int128)std::numeric_limits<int64_t>::max())
     throw std::overflow_error("Rational: normalized denominator overflows int64_t");
@@ -247,7 +247,7 @@ std::ostream& operator<<(std::ostream& os, const Rational& r) {
 std::ostream& operator<<(std::ostream& os, const Currency& c) {
   int64_t raw = c.units();
   bool negative = raw < 0;
-  // __int128 para negar com segurança — -INT64_MIN é UB em int64_t
+  // use __int128 to negate safely — -INT64_MIN is UB in int64_t
   uint64_t abs_units = static_cast<uint64_t>(
     negative ? -static_cast<__int128>(raw) : static_cast<__int128>(raw));
 
@@ -261,11 +261,11 @@ std::ostream& operator<<(std::ostream& os, const Currency& c) {
   char decimal_point =
     std::use_facet<std::numpunct<char>>(os.getloc()).decimal_point();
 
-  // whole via operator<< usa o locale do stream (inclui separador de milhar)
+  // whole part via operator<< uses the stream's locale (includes thousands separator)
   os << c.description().symbol << (negative ? "-" : "") << whole;
 
   if (prec > 0) {
-    // frac: zero-padded manualmente — não deve ter separador de milhar
+    // frac: zero-padded manually — must not have a thousands separator
     std::string frac_str(prec, '0');
     uint64_t tmp = frac;
     for (int i = prec - 1; i >= 0; --i) {
