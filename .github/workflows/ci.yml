@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: GCC 13 · Release
+            os: ubuntu-24.04
+            compiler: g++-13
+            build_type: Release
+            sanitize: OFF
+
+          - name: GCC 13 · ASan/UBSan
+            os: ubuntu-24.04
+            compiler: g++-13
+            build_type: RelWithDebInfo
+            sanitize: ON
+
+          - name: GCC 14 · Release
+            os: ubuntu-24.04
+            compiler: g++-14
+            build_type: Release
+            sanitize: OFF
+
+          - name: Clang 18 · Release
+            os: ubuntu-24.04
+            compiler: clang++-18
+            build_type: Release
+            sanitize: OFF
+
+          - name: Clang 18 · ASan/UBSan
+            os: ubuntu-24.04
+            compiler: clang++-18
+            build_type: RelWithDebInfo
+            sanitize: ON
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            ${{ matrix.compiler }} \
+            libgtest-dev \
+            cmake
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+            -DSANITIZE=${{ matrix.sanitize }}
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  fuzz:
+    name: Clang 18 · libFuzzer (60 s)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            clang-18 \
+            libgtest-dev \
+            cmake
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_CXX_COMPILER=clang++-18 \
+            -DFUZZ=ON
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Run fuzzer
+        run: |
+          mkdir -p corpus
+          ./build/fuzz_target corpus/ -max_total_time=60 -jobs=1
