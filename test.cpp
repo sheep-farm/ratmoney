@@ -10,15 +10,15 @@
 using namespace ratmoney;
 
 // ────────────────────────────────────────────────────────────
-// Fixture principal
+// Main fixture
 // ────────────────────────────────────────────────────────────
 
 class CurrencyTest : public ::testing::Test {
 protected:
-  Currency dolar     { 100000, {1,  1}, {"US Dollar",      "USD"} };
-  Currency real      { 100000, {1,  5}, {"Brazilian Real",  "BRL"} };
-  Currency peso      { 100000, {1, 25}, {"Uruguayan Peso",  "UYU"} };
-  Currency euro      { 100000, {1,  2}, {"Euro",            "EUR"} };
+  Currency dollar    { 100000, {1,  1}, {"US Dollar",      "USD"} };
+  Currency brl       { 100000, {1,  5}, {"Brazilian Real",  "BRL"} };
+  Currency uyu       { 100000, {1, 25}, {"Uruguayan Peso",  "UYU"} };
+  Currency eur       { 100000, {1,  2}, {"Euro",            "EUR"} };
   Currency zero_rate { 100000, {0,  1}, {"Zero Rate",       "ZRO"} };
   Currency zero_value{      0, {1,  2}, {"Zero Value",      "ZVL"} };
 };
@@ -27,61 +27,61 @@ protected:
 // add
 // ────────────────────────────────────────────────────────────
 
-TEST_F(CurrencyTest, AddDolarMaisReal) {
-  auto r = dolar.add(real);
+TEST_F(CurrencyTest, AddDollarPlusBrl) {
+  auto r = dollar.add(brl);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 120000);
   EXPECT_EQ(r->rate(), (Rational{1, 1}));
 }
 
-TEST_F(CurrencyTest, AddRealMaisDolar) {
-  auto r = real.add(dolar);
+TEST_F(CurrencyTest, AddBrlPlusDollar) {
+  auto r = brl.add(dollar);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 600000);
   EXPECT_EQ(r->rate(), (Rational{1, 5}));
 }
 
-TEST_F(CurrencyTest, AddDolarMaisPeso) {
-  auto r = dolar.add(peso);
+TEST_F(CurrencyTest, AddDollarPlusUyu) {
+  auto r = dollar.add(uyu);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 104000);
 }
 
-TEST_F(CurrencyTest, AddRealMaisPeso) {
-  auto r = real.add(peso);
+TEST_F(CurrencyTest, AddBrlPlusUyu) {
+  auto r = brl.add(uyu);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 120000);
 }
 
-TEST_F(CurrencyTest, AddEuroMaisReal) {
-  auto r = euro.add(real);
+TEST_F(CurrencyTest, AddEurPlusBrl) {
+  auto r = eur.add(brl);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 140000);
   EXPECT_EQ(r->rate(), (Rational{1, 2}));
 }
 
-TEST_F(CurrencyTest, AddRealMaisEuro) {
-  auto r = real.add(euro);
+TEST_F(CurrencyTest, AddBrlPlusEur) {
+  auto r = brl.add(eur);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 350000);
   EXPECT_EQ(r->rate(), (Rational{1, 5}));
 }
 
-TEST_F(CurrencyTest, AddM1RateZeroRetornaErro) {
-  auto r = zero_rate.add(dolar);
+TEST_F(CurrencyTest, AddZeroRateReturnsError) {
+  auto r = zero_rate.add(dollar);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::ZeroRate);
 }
 
-TEST_F(CurrencyTest, AddM2ValorZero) {
-  auto r = dolar.add(zero_value);
+TEST_F(CurrencyTest, AddZeroValue) {
+  auto r = dollar.add(zero_value);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 100000);
 }
 
-TEST_F(CurrencyTest, AddOverflowRetornaErro) {
+TEST_F(CurrencyTest, AddOverflowReturnsError) {
   Currency max_val(std::numeric_limits<int64_t>::max(), {1, 1}, {"Max", "MX"});
-  auto r = max_val.add(dolar);
+  auto r = max_val.add(dollar);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::Overflow);
 }
@@ -90,43 +90,43 @@ TEST_F(CurrencyTest, AddOverflowRetornaErro) {
 // subtract
 // ────────────────────────────────────────────────────────────
 
-TEST_F(CurrencyTest, SubtractDolarMenosReal) {
-  auto r = dolar.subtract(real);
+TEST_F(CurrencyTest, SubtractDollarMinusBrl) {
+  auto r = dollar.subtract(brl);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 80000);
   EXPECT_EQ(r->rate(), (Rational{1, 1}));
 }
 
-TEST_F(CurrencyTest, SubtractRealMenosDolar) {
-  auto r = real.subtract(dolar);
+TEST_F(CurrencyTest, SubtractBrlMinusDollar) {
+  auto r = brl.subtract(dollar);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), -400000);
   EXPECT_EQ(r->rate(), (Rational{1, 5}));
 }
 
-TEST_F(CurrencyTest, SubtractEuroMenosReal) {
-  auto r = euro.subtract(real);
+TEST_F(CurrencyTest, SubtractEurMinusBrl) {
+  auto r = eur.subtract(brl);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 60000);
   EXPECT_EQ(r->rate(), (Rational{1, 2}));
 }
 
-TEST_F(CurrencyTest, SubtractRealMenosEuro) {
-  auto r = real.subtract(euro);
+TEST_F(CurrencyTest, SubtractBrlMinusEur) {
+  auto r = brl.subtract(eur);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), -150000);
   EXPECT_EQ(r->rate(), (Rational{1, 5}));
 }
 
-TEST_F(CurrencyTest, SubtractM1RateZeroRetornaErro) {
-  auto r = zero_rate.subtract(dolar);
+TEST_F(CurrencyTest, SubtractZeroRateReturnsError) {
+  auto r = zero_rate.subtract(dollar);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::ZeroRate);
 }
 
-TEST_F(CurrencyTest, SubtractOverflowRetornaErro) {
+TEST_F(CurrencyTest, SubtractOverflowReturnsError) {
   Currency min_val(std::numeric_limits<int64_t>::min(), {1, 1}, {"Min", "MN"});
-  auto r = min_val.subtract(dolar);
+  auto r = min_val.subtract(dollar);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::Overflow);
 }
@@ -135,40 +135,40 @@ TEST_F(CurrencyTest, SubtractOverflowRetornaErro) {
 // scale
 // ────────────────────────────────────────────────────────────
 
-TEST_F(CurrencyTest, ScalePor2) {
-  auto r = dolar.scale({2, 1});
+TEST_F(CurrencyTest, ScaleBy2) {
+  auto r = dollar.scale({2, 1});
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 200000);
   EXPECT_EQ(r->rate(), (Rational{1, 1}));
 }
 
-TEST_F(CurrencyTest, ScalePorMetade) {
-  auto r = dolar.scale({1, 2});
+TEST_F(CurrencyTest, ScaleByHalf) {
+  auto r = dollar.scale({1, 2});
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 50000);
 }
 
-TEST_F(CurrencyTest, ScalePor3Tercos) {
-  auto r = dolar.scale({3, 2});
+TEST_F(CurrencyTest, ScaleBy3Halves) {
+  auto r = dollar.scale({3, 2});
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 150000);
 }
 
-TEST_F(CurrencyTest, ScalePorZero) {
-  auto r = dolar.scale({0, 1});
+TEST_F(CurrencyTest, ScaleByZero) {
+  auto r = dollar.scale({0, 1});
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 0);
 }
 
-TEST_F(CurrencyTest, ScaleHerdaRate) {
-  auto r = real.scale({2, 1});
+TEST_F(CurrencyTest, ScaleInheritsRate) {
+  auto r = brl.scale({2, 1});
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->rate(), (Rational{1, 5}));
 }
 
-TEST_F(CurrencyTest, ScaleOverflowRetornaErro) {
-  Currency grande(std::numeric_limits<int64_t>::max(), {1, 1}, {"Max", "MX"});
-  auto r = grande.scale({2, 1});
+TEST_F(CurrencyTest, ScaleOverflowReturnsError) {
+  Currency large(std::numeric_limits<int64_t>::max(), {1, 1}, {"Max", "MX"});
+  auto r = large.scale({2, 1});
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::Overflow);
 }
@@ -177,38 +177,38 @@ TEST_F(CurrencyTest, ScaleOverflowRetornaErro) {
 // ratio
 // ────────────────────────────────────────────────────────────
 
-TEST_F(CurrencyTest, RatioDolarRealE5Para1) {
-  auto r = dolar.ratio(real);
+TEST_F(CurrencyTest, RatioDollarBrlIs5To1) {
+  auto r = dollar.ratio(brl);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(*r, (Rational{5, 1}));
 }
 
-TEST_F(CurrencyTest, RatioRealDolarE1Para5) {
-  auto r = real.ratio(dolar);
+TEST_F(CurrencyTest, RatioBrlDollarIs1To5) {
+  auto r = brl.ratio(dollar);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(*r, (Rational{1, 5}));
 }
 
-TEST_F(CurrencyTest, RatioEuroRealE5Para2) {
-  auto r = euro.ratio(real);
+TEST_F(CurrencyTest, RatioEurBrlIs5To2) {
+  auto r = eur.ratio(brl);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(*r, (Rational{5, 2}));
 }
 
-TEST_F(CurrencyTest, RatioRealEuroE2Para5) {
-  auto r = real.ratio(euro);
+TEST_F(CurrencyTest, RatioBrlEurIs2To5) {
+  auto r = brl.ratio(eur);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(*r, (Rational{2, 5}));
 }
 
-TEST_F(CurrencyTest, RatioM1RateZeroRetornaErro) {
-  auto r = zero_rate.ratio(dolar);
+TEST_F(CurrencyTest, RatioZeroRateReturnsError) {
+  auto r = zero_rate.ratio(dollar);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::ZeroRate);
 }
 
-TEST_F(CurrencyTest, RatioM2ValorZeroRetornaErro) {
-  auto r = dolar.ratio(zero_value);
+TEST_F(CurrencyTest, RatioZeroDivisorReturnsError) {
+  auto r = dollar.ratio(zero_value);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::DivisionByZero);
 }
@@ -217,84 +217,84 @@ TEST_F(CurrencyTest, RatioM2ValorZeroRetornaErro) {
 // description
 // ────────────────────────────────────────────────────────────
 
-TEST_F(CurrencyTest, AddHerdaDescricaoDeM1) {
-  auto r = dolar.add(real);
+TEST_F(CurrencyTest, AddInheritsDescriptionFromLhs) {
+  auto r = dollar.add(brl);
   ASSERT_TRUE(r.has_value());
-  EXPECT_EQ(r->description(), dolar.description());
+  EXPECT_EQ(r->description(), dollar.description());
   EXPECT_EQ(r->description().name,   "US Dollar");
   EXPECT_EQ(r->description().symbol, "USD");
 }
 
-TEST_F(CurrencyTest, SubtractHerdaDescricaoDeM1) {
-  auto r = euro.subtract(real);
+TEST_F(CurrencyTest, SubtractInheritsDescriptionFromLhs) {
+  auto r = eur.subtract(brl);
   ASSERT_TRUE(r.has_value());
-  EXPECT_EQ(r->description(), euro.description());
+  EXPECT_EQ(r->description(), eur.description());
   EXPECT_EQ(r->description().name,   "Euro");
   EXPECT_EQ(r->description().symbol, "EUR");
 }
 
-TEST_F(CurrencyTest, ScaleHerdaDescricaoDeM1) {
-  auto r = real.scale({3, 1});
+TEST_F(CurrencyTest, ScaleInheritsDescriptionFromOperand) {
+  auto r = brl.scale({3, 1});
   ASSERT_TRUE(r.has_value());
-  EXPECT_EQ(r->description(), real.description());
+  EXPECT_EQ(r->description(), brl.description());
   EXPECT_EQ(r->description().name,   "Brazilian Real");
   EXPECT_EQ(r->description().symbol, "BRL");
 }
 
-TEST_F(CurrencyTest, AddNaoHerdaDescricaoDeM2) {
-  auto r = dolar.add(real);
+TEST_F(CurrencyTest, AddDoesNotInheritDescriptionFromRhs) {
+  auto r = dollar.add(brl);
   ASSERT_TRUE(r.has_value());
-  EXPECT_NE(r->description(), real.description());
+  EXPECT_NE(r->description(), brl.description());
 }
 
 // ────────────────────────────────────────────────────────────
 // operator==
 // ────────────────────────────────────────────────────────────
 
-TEST_F(CurrencyTest, IgualdadeMesmosValores) {
-  Currency outro(100000, {1, 1}, {"US Dollar", "USD"});
-  EXPECT_EQ(dolar, outro);
+TEST_F(CurrencyTest, EqualitySameValues) {
+  Currency other(100000, {1, 1}, {"US Dollar", "USD"});
+  EXPECT_EQ(dollar, other);
 }
 
-TEST_F(CurrencyTest, DesigualdadeUnitsDiferentes) {
-  Currency outro(200000, {1, 1}, {"US Dollar", "USD"});
-  EXPECT_NE(dolar, outro);
+TEST_F(CurrencyTest, InequalityDifferentUnits) {
+  Currency other(200000, {1, 1}, {"US Dollar", "USD"});
+  EXPECT_NE(dollar, other);
 }
 
-TEST_F(CurrencyTest, DesigualdadeRateDiferente) {
-  Currency outro(100000, {1, 2}, {"US Dollar", "USD"});
-  EXPECT_NE(dolar, outro);
+TEST_F(CurrencyTest, InequalityDifferentRate) {
+  Currency other(100000, {1, 2}, {"US Dollar", "USD"});
+  EXPECT_NE(dollar, other);
 }
 
-TEST_F(CurrencyTest, DesigualdadeDescricaoDiferente) {
-  Currency outro(100000, {1, 1}, {"Euro", "EUR"});
-  EXPECT_NE(dolar, outro);
+TEST_F(CurrencyTest, InequalityDifferentDescription) {
+  Currency other(100000, {1, 1}, {"Euro", "EUR"});
+  EXPECT_NE(dollar, other);
 }
 
 // ────────────────────────────────────────────────────────────
-// invariantes
+// invariants
 // ────────────────────────────────────────────────────────────
 
-TEST(InvariantTest, RationalDenominadorZeroLancaExcecao) {
+TEST(InvariantTest, RationalZeroDenominatorThrows) {
   EXPECT_THROW((Rational{1, 0}), std::invalid_argument);
 }
 
-TEST(InvariantTest, RationalDenominadorINT64MINLancaOverflow) {
+TEST(InvariantTest, RationalInt64MinDenominatorThrowsOverflow) {
   EXPECT_THROW((Rational{1, std::numeric_limits<int64_t>::min()}),
                std::overflow_error);
 }
 
-TEST(InvariantTest, RationalNormalizaFracao) {
+TEST(InvariantTest, RationalNormalizesFraction) {
   EXPECT_EQ((Rational{2, 10}), (Rational{1, 5}));
   EXPECT_EQ((Rational{6,  9}), (Rational{2, 3}));
 }
 
-TEST(InvariantTest, RationalNormalizaSinal) {
+TEST(InvariantTest, RationalNormalizesSign) {
   EXPECT_EQ((Rational{ 1, -2}), (Rational{-1, 2}));
   EXPECT_EQ((Rational{-1, -2}), (Rational{ 1, 2}));
 }
 
-TEST(InvariantTest, DescricaoArmazenadaPorValor) {
+TEST(InvariantTest, DescriptionStoredByValue) {
   CurrencyDescription desc { "Test", "T$" };
   Currency c(0, {1, 1}, desc);
   desc.name = "Modified";
@@ -305,37 +305,37 @@ TEST(InvariantTest, DescricaoArmazenadaPorValor) {
 // operator<<
 // ────────────────────────────────────────────────────────────
 
-TEST(StreamTest, INT64MINNaoCrashaNemCorrompe) {
-  // Antes do fix, -INT64_MIN era UB; agora usa __int128
+TEST(StreamTest, Int64MinDoesNotCrash) {
+  // Before the fix, -INT64_MIN was UB; now uses __int128
   Currency c(std::numeric_limits<int64_t>::min(), {1, 1}, {"T", "T$", 2});
   std::ostringstream oss;
   EXPECT_NO_THROW(oss << c);
   EXPECT_NE(oss.str().find("T$-"), std::string::npos);
 }
 
-TEST(StreamTest, LocaleSeparadorDeMillhar) {
-  // Imbue com locale pt_BR ou de_DE para testar separador de milhar
+TEST(StreamTest, LocaleThousandsSeparator) {
+  // Imbue with pt_BR or de_DE locale to test thousands separator
   Currency c(100000, {1, 1}, {"T", "T$", 2});
   std::ostringstream oss;
   try {
     oss.imbue(std::locale("pt_BR.UTF-8"));
   } catch (...) {
-    GTEST_SKIP() << "locale pt_BR.UTF-8 não disponível";
+    GTEST_SKIP() << "locale pt_BR.UTF-8 not available";
   }
   oss << c;
-  // Com locale pt_BR, 1000.00 pode ter separador (depende da implementação)
-  // Apenas verificamos que não crashou e que há saída
+  // With pt_BR locale, 1000.00 may have a thousands separator (implementation-defined)
+  // We only verify that it did not crash and that there is output
   EXPECT_FALSE(oss.str().empty());
 }
 
-TEST(StreamTest, JPYSemCasasDecimais) {
+TEST(StreamTest, JpyNoDecimalPlaces) {
   Currency jpy(1500, {1, 1}, ratmoney::iso4217::JPY);
   std::ostringstream oss;
   oss << jpy;
   EXPECT_EQ(oss.str(), "JPY1500");
 }
 
-TEST(StreamTest, KWDTresCasasDecimais) {
+TEST(StreamTest, KwdThreeDecimalPlaces) {
   Currency kwd(1001, {1, 1}, ratmoney::iso4217::KWD);
   std::ostringstream oss;
   oss << kwd;
@@ -343,24 +343,24 @@ TEST(StreamTest, KWDTresCasasDecimais) {
 }
 
 // ────────────────────────────────────────────────────────────
-// arredondamento banker's (HalfEven padrão)
+// banker's rounding (HalfEven default)
 // ────────────────────────────────────────────────────────────
 
-TEST(RoundingTest, MetadePorBaixoArredondaParaBaixo) {
+TEST(RoundingTest, HalfBelowRoundsDown) {
   Currency c(50, {1, 1}, {"Test", "T$"});
   auto r = c.scale({1, 100});
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 0);
 }
 
-TEST(RoundingTest, MetadePorCimaArredondaParaCima) {
+TEST(RoundingTest, HalfAboveRoundsUp) {
   Currency c(150, {1, 1}, {"Test", "T$"});
   auto r = c.scale({1, 100});
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 2);
 }
 
-TEST(RoundingTest, MetadeParImparArredondaParaCima) {
+TEST(RoundingTest, HalfOddRoundsToEven) {
   Currency c(250, {1, 1}, {"Test", "T$"});
   auto r = c.scale({1, 100});
   ASSERT_TRUE(r.has_value());
@@ -368,38 +368,38 @@ TEST(RoundingTest, MetadeParImparArredondaParaCima) {
 }
 
 // ────────────────────────────────────────────────────────────
-// modos de arredondamento
+// rounding modes
 // ────────────────────────────────────────────────────────────
 
-TEST(RoundingModeTest, HalfUpArredondaMetadeParaCima) {
+TEST(RoundingModeTest, HalfUpRoundsHalfUp) {
   Currency c(150, {1, 1}, {"T", "T$"});
   auto r = c.scale({1, 100}, RoundingMode::HalfUp);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 2);
 }
 
-TEST(RoundingModeTest, HalfDownArredondaMetadeParaBaixo) {
+TEST(RoundingModeTest, HalfDownRoundsHalfDown) {
   Currency c(150, {1, 1}, {"T", "T$"});
   auto r = c.scale({1, 100}, RoundingMode::HalfDown);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 1);
 }
 
-TEST(RoundingModeTest, UpArredondaSempreParaCima) {
+TEST(RoundingModeTest, UpAlwaysRoundsUp) {
   Currency c(101, {1, 1}, {"T", "T$"});
   auto r = c.scale({1, 100}, RoundingMode::Up);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 2);
 }
 
-TEST(RoundingModeTest, DownTruncaSempre) {
+TEST(RoundingModeTest, DownAlwaysTruncates) {
   Currency c(199, {1, 1}, {"T", "T$"});
   auto r = c.scale({1, 100}, RoundingMode::Down);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 1);
 }
 
-TEST(RoundingModeTest, HalfEvenArredondaParaParMaisProximo) {
+TEST(RoundingModeTest, HalfEvenRoundsToNearestEven) {
   Currency c50 (50,  {1, 1}, {"T", "T$"});
   Currency c150(150, {1, 1}, {"T", "T$"});
 
@@ -408,15 +408,15 @@ TEST(RoundingModeTest, HalfEvenArredondaParaParMaisProximo) {
 
   ASSERT_TRUE(r50.has_value());
   ASSERT_TRUE(r150.has_value());
-  EXPECT_EQ(r50->units(),  0);  // 0.5 → 0 (par)
-  EXPECT_EQ(r150->units(), 2);  // 1.5 → 2 (par)
+  EXPECT_EQ(r50->units(),  0);  // 0.5 → 0 (even)
+  EXPECT_EQ(r150->units(), 2);  // 1.5 → 2 (even)
 }
 
 // ────────────────────────────────────────────────────────────
-// serialização
+// serialization
 // ────────────────────────────────────────────────────────────
 
-TEST(SerializationTest, RoundTripBasico) {
+TEST(SerializationTest, RoundTripBasic) {
   Currency original(123456, {3, 7}, {"Test", "T$", 2});
   auto s = original.serialize();
   auto r = Currency::deserialize(s);
@@ -424,7 +424,7 @@ TEST(SerializationTest, RoundTripBasico) {
   EXPECT_EQ(*r, original);
 }
 
-TEST(SerializationTest, RoundTripPrecisaoTres) {
+TEST(SerializationTest, RoundTripPrecisionThree) {
   Currency original(999, {1, 1}, {"Kuwaiti Dinar", "KWD", 3});
   auto s = original.serialize();
   auto r = Currency::deserialize(s);
@@ -433,21 +433,21 @@ TEST(SerializationTest, RoundTripPrecisaoTres) {
   EXPECT_EQ(*r, original);
 }
 
-TEST(SerializationTest, DeserializeDenominadorZeroRetornaErro) {
+TEST(SerializationTest, DeserializeZeroDenominatorReturnsError) {
   Currency::Serialized bad{0, 1, 0, "T", "T$", 2};
   auto r = Currency::deserialize(bad);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::InvalidData);
 }
 
-TEST(SerializationTest, DeserializePrecisaoAcimaDeMaxRetornaErro) {
+TEST(SerializationTest, DeserializePrecisionAboveMaxReturnsError) {
   Currency::Serialized bad{0, 1, 1, "T", "T$", 19};
   auto r = Currency::deserialize(bad);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::InvalidData);
 }
 
-TEST(SerializationTest, SerializadoPreservaCampos) {
+TEST(SerializationTest, SerializedPreservesFields) {
   Currency c(42, {5, 3}, {"My Coin", "MC", 1});
   auto s = c.serialize();
   EXPECT_EQ(s.units,     42);
@@ -462,22 +462,22 @@ TEST(SerializationTest, SerializadoPreservaCampos) {
 // ISO 4217
 // ────────────────────────────────────────────────────────────
 
-TEST(Iso4217Test, JPYPrecisaoZero) {
+TEST(Iso4217Test, JpyPrecisionZero) {
   EXPECT_EQ(iso4217::JPY.precision, 0);
   EXPECT_EQ(iso4217::JPY.symbol, "JPY");
 }
 
-TEST(Iso4217Test, KWDPrecisaoTres) {
+TEST(Iso4217Test, KwdPrecisionThree) {
   EXPECT_EQ(iso4217::KWD.precision, 3);
   EXPECT_EQ(iso4217::KWD.symbol, "KWD");
 }
 
-TEST(Iso4217Test, USDPrecisaoDois) {
+TEST(Iso4217Test, UsdPrecisionTwo) {
   EXPECT_EQ(iso4217::USD.precision, 2);
   EXPECT_EQ(iso4217::USD.symbol, "USD");
 }
 
-TEST(Iso4217Test, CurrencyComJPYAceitaPrecisaoZero) {
+TEST(Iso4217Test, CurrencyWithJpyAcceptsPrecisionZero) {
   Currency jpy(1500, {1, 1}, iso4217::JPY);
   EXPECT_EQ(jpy.description().precision, 0);
   EXPECT_EQ(jpy.units(), 1500);
@@ -487,7 +487,7 @@ TEST(Iso4217Test, CurrencyComJPYAceitaPrecisaoZero) {
 // ExchangeRate
 // ────────────────────────────────────────────────────────────
 
-TEST(ExchangeRateTest, RateValidaDentroDoTempo) {
+TEST(ExchangeRateTest, RateValidWithinTimeWindow) {
   ExchangeRate er{
     .bid       = {99, 100},
     .ask       = {101, 100},
@@ -497,7 +497,7 @@ TEST(ExchangeRateTest, RateValidaDentroDoTempo) {
   EXPECT_TRUE(er.isValid());
 }
 
-TEST(ExchangeRateTest, RateExpiradaForaDoTempo) {
+TEST(ExchangeRateTest, RateExpiredOutsideTimeWindow) {
   ExchangeRate er{
     .bid       = {99, 100},
     .ask       = {101, 100},
@@ -507,7 +507,7 @@ TEST(ExchangeRateTest, RateExpiradaForaDoTempo) {
   EXPECT_FALSE(er.isValid());
 }
 
-TEST(ExchangeRateTest, MidpointBidAskSimetrico) {
+TEST(ExchangeRateTest, MidpointSymmetricBidAsk) {
   ExchangeRate er{
     .bid       = {99, 100},
     .ask       = {101, 100},
@@ -517,7 +517,7 @@ TEST(ExchangeRateTest, MidpointBidAskSimetrico) {
   EXPECT_EQ(er.midpoint(), (Rational{1, 1}));
 }
 
-TEST(ExchangeRateTest, EffectiveBidAskComFee) {
+TEST(ExchangeRateTest, EffectiveBidAskWithFee) {
   ExchangeRate er{
     .bid       = {100, 100},  // 1.00
     .ask       = {102, 100},  // 1.02
@@ -530,7 +530,7 @@ TEST(ExchangeRateTest, EffectiveBidAskComFee) {
   EXPECT_EQ(er.effectiveAsk(), (Rational{103, 100}));
 }
 
-TEST(ExchangeRateTest, EffectiveBidAskSemFeeIgualBidAsk) {
+TEST(ExchangeRateTest, EffectiveBidAskNoFeeEqualsBidAsk) {
   ExchangeRate er{
     .bid       = {99, 100},
     .ask       = {101, 100},
@@ -541,7 +541,7 @@ TEST(ExchangeRateTest, EffectiveBidAskSemFeeIgualBidAsk) {
   EXPECT_EQ(er.effectiveAsk(), er.ask);
 }
 
-TEST(ExchangeRateTest, MidpointFracionario) {
+TEST(ExchangeRateTest, MidpointFractional) {
   ExchangeRate er{
     .bid       = {1, 2},
     .ask       = {3, 4},
@@ -552,35 +552,35 @@ TEST(ExchangeRateTest, MidpointFracionario) {
 }
 
 // ────────────────────────────────────────────────────────────
-// convert (livre) + ExchangeRate::apply
+// free convert + ExchangeRate::apply
 // ────────────────────────────────────────────────────────────
 
-TEST(ConvertTest, USDparaBRL) {
+TEST(ConvertTest, UsdToBrl) {
   Currency usd(10000, {1, 1}, iso4217::USD);   // 100.00 USD
   auto r = convert(usd, {5, 1}, iso4217::BRL); // 1 USD = 5 BRL
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 50000);                // 500.00 BRL
   EXPECT_EQ(r->description().symbol, "BRL");
-  EXPECT_EQ(r->rate(), (Rational{1, 5}));      // 1 BRL centavo = 1/5 USD cent
+  EXPECT_EQ(r->rate(), (Rational{1, 5}));      // 1 BRL cent = 1/5 USD cent
 }
 
-TEST(ConvertTest, USDparaJPY) {
-  Currency usd(10000, {1, 1}, iso4217::USD);    // 100.00 USD
+TEST(ConvertTest, UsdToJpy) {
+  Currency usd(10000, {1, 1}, iso4217::USD);     // 100.00 USD
   auto r = convert(usd, {110, 1}, iso4217::JPY); // 1 USD = 110 JPY
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 11000);                  // 11000 JPY
   EXPECT_EQ(r->description().symbol, "JPY");
-  EXPECT_EQ(r->rate(), (Rational{10, 11}));       // 10 USD cents = 11 JPY
+  EXPECT_EQ(r->rate(), (Rational{10, 11}));      // 10 USD cents = 11 JPY
 }
 
-TEST(ConvertTest, JPYparaUSD) {
+TEST(ConvertTest, JpyToUsd) {
   Currency jpy(11000, {10, 11}, iso4217::JPY);   // 11000 JPY (rate from previous convert)
   auto r = convert(jpy, {1, 110}, iso4217::USD); // 1 JPY = 1/110 USD
   ASSERT_TRUE(r.has_value());
-  EXPECT_EQ(r->units(), 10000);  // 100.00 USD (back-conversion, exact)
+  EXPECT_EQ(r->units(), 10000);                  // 100.00 USD (back-conversion, exact)
 }
 
-TEST(ConvertTest, CurrencyPairValidaOrigem) {
+TEST(ConvertTest, CurrencyPairValidatesSource) {
   Currency usd(10000, {1, 1}, iso4217::USD);
   CurrencyPair usd_brl{iso4217::USD, iso4217::BRL};
 
@@ -594,14 +594,14 @@ TEST(ConvertTest, CurrencyPairValidaOrigem) {
   EXPECT_EQ(err.error(), CurrencyError::InvalidData);
 }
 
-TEST(ConvertTest, RateZeroRetornaErro) {
+TEST(ConvertTest, ZeroRateReturnsError) {
   Currency usd(10000, {1, 1}, iso4217::USD);
   auto r = convert(usd, {0, 1}, iso4217::BRL);
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error(), CurrencyError::ZeroRate);
 }
 
-TEST(ConvertTest, ExchangeRateApplyComFee) {
+TEST(ConvertTest, ExchangeRateApplyWithFee) {
   Currency usd(10000, {1, 1}, iso4217::USD);  // 100.00 USD
   ExchangeRate er{
     .bid       = {49, 10},   // 4.90 BRL/USD
@@ -610,7 +610,7 @@ TEST(ConvertTest, ExchangeRateApplyComFee) {
     .timestamp = std::chrono::system_clock::now(),
   };
   // effectiveAsk = 5.10 + 0.01 = 5.11 BRL/USD
-  // 100.00 USD × 5.11 = 511.00 BRL = 51100 centavos
+  // 100.00 USD × 5.11 = 511.00 BRL = 51100 cents
   auto r = er.apply(usd, iso4217::BRL);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->units(), 51100);
@@ -632,10 +632,10 @@ TEST(ConvertTest, ExchangeRateApplyBid) {
 }
 
 // ────────────────────────────────────────────────────────────
-// stress — 50 000 inputs aleatórios, invariantes verificados
+// stress — 50 000 random inputs, invariants verified
 // ────────────────────────────────────────────────────────────
 
-TEST(StressTest, InvariantesComInputsAleatorios) {
+TEST(StressTest, InvariantsWithRandomInputs) {
   std::mt19937_64 rng(0xdeadbeefcafe);
   std::uniform_int_distribution<int64_t> udist(-1'000'000LL, 1'000'000LL);
   std::uniform_int_distribution<int64_t> rdist(1, 10'000LL);
@@ -677,24 +677,24 @@ TEST(StressTest, InvariantesComInputsAleatorios) {
 }
 
 // ────────────────────────────────────────────────────────────
-// propriedades
+// properties
 // ────────────────────────────────────────────────────────────
 
-TEST(PropertyTest, ScaleIdentidade) {
+TEST(PropertyTest, ScaleIdentity) {
   Currency c(100000, {1, 1}, {"T", "T$"});
   auto r = c.scale({1, 1});
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(*r, c);
 }
 
-TEST(PropertyTest, RatioConsigoProprio) {
+TEST(PropertyTest, RatioWithSelf) {
   Currency c(100000, {1, 1}, {"T", "T$"});
   auto r = c.ratio(c);
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(*r, (Rational{1, 1}));
 }
 
-TEST(PropertyTest, AddSubtractInverso) {
+TEST(PropertyTest, AddSubtractInverse) {
   Currency usd(100000, {1, 1}, {"USD", "$", 2});
   Currency brl( 50000, {1, 5}, {"BRL", "R$", 2});
   auto added = usd.add(brl);
@@ -704,7 +704,7 @@ TEST(PropertyTest, AddSubtractInverso) {
   EXPECT_EQ(*restored, usd);
 }
 
-TEST(PropertyTest, ScaleAssociativa) {
+TEST(PropertyTest, ScaleAssociative) {
   Currency c(120000, {1, 1}, {"T", "T$"});
   auto r1 = c.scale({2, 1}).and_then([](Currency x){ return x.scale({3, 1}); });
   auto r2 = c.scale({6, 1});
