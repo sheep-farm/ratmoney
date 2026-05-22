@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <iomanip>
 #include <limits>
 #include <locale>
+#include <numeric>
 #include <ostream>
 #include <stdexcept>
 #include "currency.h"
@@ -8,6 +10,20 @@
 namespace ratmoney {
 
 // --- Rational ---
+
+// floor division: rounds toward -infinity (C++ truncates toward zero)
+static __int128 floorDiv128(__int128 n, __int128 d) {
+  __int128 q = n / d;
+  if (n % d != 0 && (n < 0) != (d < 0)) q -= 1;
+  return q;
+}
+
+// mathematical modulo: result always in [0, |d|)
+static __int128 modPositive128(__int128 n, __int128 d) {
+  __int128 r = n % d;
+  if (r < 0) r += (d < 0 ? -d : d);
+  return r;
+}
 
 static __int128 gcd128(__int128 a, __int128 b) {
   if (a < 0) a = -a;
@@ -107,6 +123,12 @@ Currency& Currency::operator=(Currency&&) noexcept = default;
 int64_t                    Currency::units()       const noexcept { return impl_->units; }
 Rational                   Currency::rate()        const noexcept { return impl_->rate; }
 const CurrencyDescription& Currency::description() const noexcept { return impl_->description; }
+
+double Currency::to_double() const noexcept {
+  double divisor = 1.0;
+  for (uint8_t i = 0; i < impl_->description.precision; ++i) divisor *= 10.0;
+  return (double)impl_->units / divisor;
+}
 
 bool Currency::operator==(const Currency& other) const {
   return impl_->units       == other.impl_->units
@@ -235,6 +257,83 @@ std::expected<Currency, CurrencyError> convert(
   if (from.description() != pair.base)
     return std::unexpected(CurrencyError::InvalidData);
   return convert(from, exchange_rate, pair.quote, mode);
+}
+
+std::expected<Currency, CurrencyError> Currency::percent(
+    Rational pct, RoundingMode mode) const
+{
+  __int128 result = roundedDiv((__int128)impl_->units * pct.num,
+                               (__int128)pct.den * 100, mode);
+  if (!fitsInt64(result)) return std::unexpected(CurrencyError::Overflow);
+  return Currency((int64_t)result, impl_->rate, impl_->description);
+}
+
+std::expected<Currency, CurrencyError> Currency::proportion(
+    Rational factor, RoundingMode mode) const
+{
+  return scale(factor, mode);
+}
+
+std::expected<std::vector<Currency>, CurrencyError> Currency::allocate(int64_t n) const {
+  if (n <= 0) return std::unexpected(CurrencyError::InvalidData);
+
+  const int64_t T       = impl_->units;
+  const int64_t q       = T / n;
+  const int64_t r       = T % n;
+  const int64_t q_floor = q - (r < 0 ? 1 : 0);
+  const int64_t rem     = r + (r < 0 ? n : 0);  // 0 <= rem < n
+
+  std::vector<Currency> result;
+  result.reserve((size_t)n);
+  for (int64_t i = 0; i < n; ++i)
+    result.emplace_back(q_floor + (i < rem ? 1 : 0), impl_->rate, impl_->description);
+  return result;
+}
+
+std::expected<std::vector<Currency>, CurrencyError> Currency::allocate(
+    std::span<const int64_t> ratios) const
+{
+  if (ratios.empty()) return std::unexpected(CurrencyError::InvalidData);
+
+  __int128 S = 0;
+  for (int64_t r : ratios) {
+    if (r < 0) return std::unexpected(CurrencyError::InvalidData);
+    S += r;
+  }
+  if (S == 0) return std::unexpected(CurrencyError::InvalidData);
+
+  const int64_t T = impl_->units;
+  const size_t  n = ratios.size();
+
+  std::vector<int64_t>  shares(n);
+  std::vector<__int128> rems(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    __int128 prod = (__int128)T * ratios[i];
+    __int128 s    = floorDiv128(prod, S);
+    if (!fitsInt64(s)) return std::unexpected(CurrencyError::Overflow);
+    shares[i] = (int64_t)s;
+    rems[i]   = modPositive128(prod, S);
+  }
+
+  // remainder is always >= 0 when using floor division
+  __int128 sum_s = 0;
+  for (int64_t s : shares) sum_s += s;
+  int64_t remainder = T - (int64_t)sum_s;
+
+  // distribute extra units to parts with largest fractional remainders
+  std::vector<size_t> order(n);
+  std::iota(order.begin(), order.end(), 0);
+  std::stable_sort(order.begin(), order.end(),
+      [&rems](size_t a, size_t b) { return rems[a] > rems[b]; });
+  for (int64_t k = 0; k < remainder; ++k)
+    shares[order[k]] += 1;
+
+  std::vector<Currency> result;
+  result.reserve(n);
+  for (size_t i = 0; i < n; ++i)
+    result.emplace_back(shares[i], impl_->rate, impl_->description);
+  return result;
 }
 
 // --- stream operators ---

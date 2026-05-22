@@ -1,5 +1,6 @@
 #include <chrono>
 #include <limits>
+#include <numeric>
 #include <random>
 #include <sstream>
 #include <gtest/gtest.h>
@@ -711,4 +712,299 @@ TEST(PropertyTest, ScaleAssociative) {
   ASSERT_TRUE(r1.has_value());
   ASSERT_TRUE(r2.has_value());
   EXPECT_EQ(*r1, *r2);
+}
+
+// ────────────────────────────────────────────────────────────
+// allocate — equal split
+// ────────────────────────────────────────────────────────────
+
+static int64_t sum_units(const std::vector<Currency>& v) {
+  return std::accumulate(v.begin(), v.end(), int64_t{0},
+      [](int64_t acc, const Currency& c) { return acc + c.units(); });
+}
+
+TEST(AllocateEqualTest, ThreeWaysPositive) {
+  Currency c(100, {1, 1}, {"T", "T$"});
+  auto r = c.allocate(3);
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->size(), 3u);
+  EXPECT_EQ((*r)[0].units(), 34);
+  EXPECT_EQ((*r)[1].units(), 33);
+  EXPECT_EQ((*r)[2].units(), 33);
+  EXPECT_EQ(sum_units(*r), 100);
+}
+
+TEST(AllocateEqualTest, ThreeWaysNegative) {
+  Currency c(-100, {1, 1}, {"T", "T$"});
+  auto r = c.allocate(3);
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ((*r)[0].units(), -33);
+  EXPECT_EQ((*r)[1].units(), -33);
+  EXPECT_EQ((*r)[2].units(), -34);
+  EXPECT_EQ(sum_units(*r), -100);
+}
+
+TEST(AllocateEqualTest, ExactDivision) {
+  Currency c(99, {1, 1}, {"T", "T$"});
+  auto r = c.allocate(3);
+  ASSERT_TRUE(r.has_value());
+  for (const auto& part : *r) EXPECT_EQ(part.units(), 33);
+  EXPECT_EQ(sum_units(*r), 99);
+}
+
+TEST(AllocateEqualTest, Zero) {
+  Currency c(0, {1, 1}, {"T", "T$"});
+  auto r = c.allocate(3);
+  ASSERT_TRUE(r.has_value());
+  for (const auto& part : *r) EXPECT_EQ(part.units(), 0);
+}
+
+TEST(AllocateEqualTest, OneUnit) {
+  EXPECT_EQ(Currency(1, {1,1}, {"T","T$"}).allocate(2)->at(0).units(), 1);
+  EXPECT_EQ(Currency(1, {1,1}, {"T","T$"}).allocate(2)->at(1).units(), 0);
+}
+
+TEST(AllocateEqualTest, NegativeOneUnit) {
+  EXPECT_EQ(Currency(-1, {1,1}, {"T","T$"}).allocate(2)->at(0).units(),  0);
+  EXPECT_EQ(Currency(-1, {1,1}, {"T","T$"}).allocate(2)->at(1).units(), -1);
+}
+
+TEST(AllocateEqualTest, IntoOne) {
+  Currency c(12345, {1, 1}, {"T", "T$"});
+  auto r = c.allocate(1);
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->size(), 1u);
+  EXPECT_EQ((*r)[0].units(), 12345);
+}
+
+TEST(AllocateEqualTest, ZeroPartsReturnsError) {
+  EXPECT_FALSE(Currency(100, {1,1}, {"T","T$"}).allocate(0).has_value());
+}
+
+TEST(AllocateEqualTest, NegativePartsReturnsError) {
+  EXPECT_FALSE(Currency(100, {1,1}, {"T","T$"}).allocate(-1).has_value());
+}
+
+TEST(AllocateEqualTest, SumEqualsTotal) {
+  std::mt19937_64 rng(42);
+  std::uniform_int_distribution<int64_t> dist(-1'000'000, 1'000'000);
+  std::uniform_int_distribution<int64_t> ndist(1, 20);
+  for (int i = 0; i < 1000; ++i) {
+    int64_t total = dist(rng);
+    int64_t n     = ndist(rng);
+    Currency c(total, {1,1}, {"T","T$"});
+    auto r = c.allocate(n);
+    ASSERT_TRUE(r.has_value());
+    EXPECT_EQ(sum_units(*r), total);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// allocate — ratio split
+// ────────────────────────────────────────────────────────────
+
+TEST(AllocateRatioTest, ExactRatios) {
+  Currency c(60, {1, 1}, {"T", "T$"});
+  auto r = c.allocate({1, 2, 3});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ((*r)[0].units(), 10);
+  EXPECT_EQ((*r)[1].units(), 20);
+  EXPECT_EQ((*r)[2].units(), 30);
+  EXPECT_EQ(sum_units(*r), 60);
+}
+
+TEST(AllocateRatioTest, LargestRemainderPositive) {
+  Currency c(100, {1, 1}, {"T", "T$"});
+  auto r = c.allocate({1, 2, 3});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ((*r)[0].units(), 17);
+  EXPECT_EQ((*r)[1].units(), 33);
+  EXPECT_EQ((*r)[2].units(), 50);
+  EXPECT_EQ(sum_units(*r), 100);
+}
+
+TEST(AllocateRatioTest, LargestRemainderNegative) {
+  Currency c(-100, {1, 1}, {"T", "T$"});
+  auto r = c.allocate({1, 2, 3});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ((*r)[0].units(), -17);
+  EXPECT_EQ((*r)[1].units(), -33);
+  EXPECT_EQ((*r)[2].units(), -50);
+  EXPECT_EQ(sum_units(*r), -100);
+}
+
+TEST(AllocateRatioTest, TwoEqualRatiosOneUnit) {
+  Currency c(1, {1, 1}, {"T", "T$"});
+  auto r = c.allocate({1, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ((*r)[0].units(), 1);
+  EXPECT_EQ((*r)[1].units(), 0);
+  EXPECT_EQ(sum_units(*r), 1);
+}
+
+TEST(AllocateRatioTest, TwoEqualRatiosNegativeOneUnit) {
+  Currency c(-1, {1, 1}, {"T", "T$"});
+  auto r = c.allocate({1, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ((*r)[0].units(), 0);
+  EXPECT_EQ((*r)[1].units(), -1);
+  EXPECT_EQ(sum_units(*r), -1);
+}
+
+TEST(AllocateRatioTest, SingleRatio) {
+  Currency c(999, {1, 1}, {"T", "T$"});
+  auto r = c.allocate({7});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->size(), 1u);
+  EXPECT_EQ((*r)[0].units(), 999);
+}
+
+TEST(AllocateRatioTest, EmptyRatiosReturnsError) {
+  std::vector<int64_t> empty;
+  EXPECT_FALSE(Currency(100,{1,1},{"T","T$"}).allocate(std::span<const int64_t>(empty)).has_value());
+}
+
+TEST(AllocateRatioTest, AllZeroRatiosReturnsError) {
+  EXPECT_FALSE(Currency(100,{1,1},{"T","T$"}).allocate({0, 0, 0}).has_value());
+}
+
+TEST(AllocateRatioTest, NegativeRatioReturnsError) {
+  EXPECT_FALSE(Currency(100,{1,1},{"T","T$"}).allocate({1, -1, 2}).has_value());
+}
+
+TEST(AllocateRatioTest, SumEqualsTotal) {
+  std::mt19937_64 rng(99);
+  std::uniform_int_distribution<int64_t> vdist(-1'000'000, 1'000'000);
+  std::uniform_int_distribution<int64_t> rdist(0, 100);
+  std::uniform_int_distribution<int>     ndist(1, 7);
+  for (int i = 0; i < 1000; ++i) {
+    int64_t total = vdist(rng);
+    int     n     = ndist(rng);
+    std::vector<int64_t> ratios(n);
+    int64_t S = 0;
+    for (auto& r : ratios) { r = rdist(rng); S += r; }
+    if (S == 0) { ratios[0] = 1; }
+    Currency c(total, {1,1}, {"T","T$"});
+    auto r = c.allocate(std::span<const int64_t>(ratios));
+    ASSERT_TRUE(r.has_value());
+    EXPECT_EQ(sum_units(*r), total);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// percent / proportion
+// ────────────────────────────────────────────────────────────
+
+TEST(PercentTest, TenPercent) {
+  Currency c(10000, {1, 1}, {"T", "T$"});  // 10000 minor units
+  auto r = c.percent({10, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->units(), 1000);
+}
+
+TEST(PercentTest, FifteenPercent) {
+  Currency c(10000, {1, 1}, {"T", "T$"});
+  auto r = c.percent({15, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->units(), 1500);
+}
+
+TEST(PercentTest, FiftyPercent) {
+  Currency c(10000, {1, 1}, {"T", "T$"});
+  auto r = c.percent({50, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->units(), 5000);
+}
+
+TEST(PercentTest, OneHundredPercent) {
+  Currency c(10000, {1, 1}, {"T", "T$"});
+  auto r = c.percent({100, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->units(), 10000);
+}
+
+TEST(PercentTest, FractionalPercent) {
+  // 1/3 % of 10000 = 33.33 → rounds to 33 (HalfEven)
+  Currency c(10000, {1, 1}, {"T", "T$"});
+  auto r = c.percent({1, 3});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->units(), 33);
+}
+
+TEST(PercentTest, HalfPercentRounding) {
+  // 0.5% of 10000 = 50, exact
+  Currency c(10000, {1, 1}, {"T", "T$"});
+  auto r = c.percent({1, 2});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->units(), 50);
+}
+
+TEST(PercentTest, NegativeAmount) {
+  Currency c(-10000, {1, 1}, {"T", "T$"});
+  auto r = c.percent({10, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->units(), -1000);
+}
+
+TEST(PercentTest, MetadataPreserved) {
+  Currency c(10000, {1, 5}, {"BRL", "R$", 2});
+  auto r = c.percent({10, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->rate(), (Rational{1, 5}));
+  EXPECT_EQ(r->description().symbol, "R$");
+}
+
+TEST(ProportionTest, OneThird) {
+  Currency c(10000, {1, 1}, {"T", "T$"});
+  auto rp = c.proportion({1, 3});
+  auto rs = c.scale({1, 3});
+  ASSERT_TRUE(rp.has_value());
+  ASSERT_TRUE(rs.has_value());
+  EXPECT_EQ(*rp, *rs);
+}
+
+TEST(ProportionTest, Identity) {
+  Currency c(10000, {1, 1}, {"T", "T$"});
+  auto r = c.proportion({1, 1});
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(*r, c);
+}
+
+// ────────────────────────────────────────────────────────────
+// to_double
+// ────────────────────────────────────────────────────────────
+
+TEST(ToDoubleTest, UsdTwoDecimalPlaces) {
+  Currency c(12345, {1, 1}, {"USD", "USD", 2});
+  EXPECT_DOUBLE_EQ(c.to_double(), 123.45);
+}
+
+TEST(ToDoubleTest, JpyZeroDecimalPlaces) {
+  Currency c(1000, {1, 1}, {"JPY", "JPY", 0});
+  EXPECT_DOUBLE_EQ(c.to_double(), 1000.0);
+}
+
+TEST(ToDoubleTest, KwdThreeDecimalPlaces) {
+  Currency c(1000, {1, 1}, {"KWD", "KWD", 3});
+  EXPECT_DOUBLE_EQ(c.to_double(), 1.0);
+}
+
+TEST(ToDoubleTest, NegativeAmount) {
+  Currency c(-5050, {1, 1}, {"USD", "USD", 2});
+  EXPECT_DOUBLE_EQ(c.to_double(), -50.50);
+}
+
+TEST(ToDoubleTest, Zero) {
+  Currency c(0, {1, 1}, {"USD", "USD", 2});
+  EXPECT_DOUBLE_EQ(c.to_double(), 0.0);
+}
+
+TEST(ProportionTest, PercentVsProportionConsistency) {
+  // percent({20, 1}) must equal proportion({20, 100}) = proportion({1, 5})
+  Currency c(10000, {1, 1}, {"T", "T$"});
+  auto rp  = c.percent({20, 1});
+  auto rprop = c.proportion({1, 5});
+  ASSERT_TRUE(rp.has_value());
+  ASSERT_TRUE(rprop.has_value());
+  EXPECT_EQ(*rp, *rprop);
 }

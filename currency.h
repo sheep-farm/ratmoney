@@ -2,9 +2,12 @@
 
 #include <cstdint>
 #include <expected>
+#include <initializer_list>
 #include <iosfwd>
 #include <memory>
+#include <span>
 #include <string>
+#include <vector>
 
 namespace ratmoney {
 
@@ -67,6 +70,10 @@ public:
   Rational                   rate()        const noexcept;
   const CurrencyDescription& description() const noexcept;
 
+  /// Returns the amount in major units as a double.  E.g. 12345 USD-cents → 123.45.
+  /// Intended for use in continuous math (e.g. financial models); not for display or storage.
+  double to_double() const noexcept;
+
   bool operator==(const Currency&) const;
 
   /// Returns this + other, converting other to this currency's rate.
@@ -86,6 +93,30 @@ public:
   /// Returns this/other as a dimensionless Rational (same rate basis).
   [[nodiscard]] std::expected<Rational, CurrencyError> ratio(
     const Currency& other) const;
+
+  /// Returns this * (pct / 100), rounded.  E.g. percent({15, 1}) = 15%.
+  [[nodiscard]] std::expected<Currency, CurrencyError> percent(
+    Rational pct,
+    RoundingMode mode = RoundingMode::HalfEven) const;
+
+  /// Returns this * factor.  Semantic alias for scale() when intent is a fraction of a whole.
+  [[nodiscard]] std::expected<Currency, CurrencyError> proportion(
+    Rational factor,
+    RoundingMode mode = RoundingMode::HalfEven) const;
+
+  /// Splits amount into n equal parts.  Parts differ by at most 1 unit and sum exactly to *this.
+  [[nodiscard]] std::expected<std::vector<Currency>, CurrencyError>
+  allocate(int64_t n) const;
+
+  /// Splits amount by integer ratios (largest-remainder method).
+  /// Parts sum exactly to *this; no unit is lost or created.  All ratios must be >= 0.
+  [[nodiscard]] std::expected<std::vector<Currency>, CurrencyError>
+  allocate(std::span<const int64_t> ratios) const;
+
+  [[nodiscard]] std::expected<std::vector<Currency>, CurrencyError>
+  allocate(std::initializer_list<int64_t> ratios) const {
+    return allocate(std::span<const int64_t>{ratios.begin(), ratios.size()});
+  }
 
   struct Serialized {
     int64_t     units;

@@ -9,6 +9,30 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- `Currency::allocate(int64_t n)` — splits amount into n equal parts using floor division;
+  parts differ by at most 1 unit and sum exactly to the original (correct for negative amounts)
+- `Currency::allocate(span<const int64_t> ratios)` / `allocate({...})` — splits by integer
+  ratios using the largest-remainder method; sum always equals the original regardless of
+  rounding; all ratios must be ≥ 0 and not all zero
+- `Currency::percent(Rational pct, RoundingMode)` — returns `amount × pct / 100`;
+  e.g. `percent({15, 1})` = 15%, `percent({1, 2})` = 0.5%
+- `Currency::proportion(Rational factor, RoundingMode)` — semantic alias for `scale()`;
+  makes intent explicit when computing a fraction of a whole
+- `Currency::to_double()` — returns the amount in major units as `double`
+  (e.g. 12345 USD-cents → 123.45); intended for continuous math, not display or storage
+
+### Changed
+
+- `iso4217.h` — expanded from ~40 to ~180 entries with full ISO 4217 active-code coverage:
+  Americas (North, Central/Caribbean, South), Europe (incl. UK territories FKP/GIP/SHP),
+  Middle East, Africa, Asia, Pacific/Oceania, precious metals (XAU/XAG/XPD/XPT),
+  fund codes (BOV/CHE/CHW/CLF/COU/MXV/USN/UYI/UYW/XDR/XSU/XUA), and
+  non-currency codes (XTS/XXX). Precision for all 3-decimal currencies (BHD/IQD/JOD/KWD/LYD/OMR/TND),
+  0-decimal currencies (BIF/CLP/DJF/GNF/ISK/JPY/KMF/KRW/PYG/RWF/UGX/VND/VUV/XAF/XOF/XPF),
+  and 4-decimal fund codes (CLF/UYW) are correctly set.
+
 ---
 
 ## [0.1.0] — 2026-05-20

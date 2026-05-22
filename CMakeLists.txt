@@ -8,6 +8,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(SANITIZE "Enable address/undefined sanitizers" OFF)
 option(FUZZ     "Build libFuzzer target (requires clang)" OFF)
 
+include(GNUInstallDirs)
+
 set(LIB_SOURCES currency.cpp exchange_rate.cpp)
 set(LIB_HEADERS currency.h exchange_rate.h iso4217.h)
 
@@ -64,7 +66,6 @@ if(FUZZ)
 endif()
 
 # ── install ───────────────────────────────────────────────────
-include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 install(TARGETS ratmoney_static ratmoney_shared
