@@ -46,7 +46,10 @@ A `Currency` holds three fields:
 | Precision-aware | `precision` per description: JPY=0, USD/EUR/BRL=2, KWD=3 |
 | Exchange rates | `ExchangeRate` with bid/ask/fee, `effectiveBid/Ask()`, `apply()` |
 | Type-safe convert | `CurrencyPair` validates source currency at call site |
-| ISO 4217 registry | 40+ currencies in `ratmoney::iso4217` |
+| Allocation | `allocate(n)` / `allocate({ratios})` — exact split with no lost units |
+| Percent / proportion | `percent({15,1})` = 15%, `proportion({1,3})` = ⅓; both use `__int128` |
+| Double conversion | `to_double()` — major-unit value for continuous math (e.g. financial models) |
+| ISO 4217 registry | ~180 currencies in `ratmoney::iso4217` (full active-code coverage) |
 | Serialization | `serialize()` / `deserialize()` round-trip |
 | ABI stable | pImpl (`std::unique_ptr<Impl>`) — changing internals doesn't break consumers |
 | Locale output | `operator<<` uses stream locale for decimal point and thousands separator |
@@ -74,7 +77,19 @@ Currency jpy( 1100, {1, 1}, iso4217::JPY);   // 1100 JPY    (precision=0, no dec
 auto sum = usd.add(brl);
 if (sum) std::cout << *sum << '\n';          // USD120.00
 
-auto tax = usd.scale({1, 10});               // 10 % of 100 USD → USD10.00
+auto tax = usd.scale({1, 10});               // 10% of 100 USD → USD10.00
+
+// ── Percent / proportion ──────────────────────────────────────
+auto p15 = usd.percent({15, 1});             // 15% → USD15.00
+auto half = usd.proportion({1, 2});          // ½  → USD50.00
+
+// ── Allocation ────────────────────────────────────────────────
+// Split USD 100.00 (10000 cents) three ways — no cent is lost
+auto parts = usd.allocate(3);               // [USD33.34, USD33.33, USD33.33]
+auto byRatio = usd.allocate({1, 2, 3});     // [USD16.67, USD33.33, USD50.00]
+
+// ── Double conversion (for continuous math) ───────────────────
+double v = usd.to_double();                 // 100.0
 
 // ── Raw conversion ────────────────────────────────────────────────
 // {5, 1}: 1 USD = 5 BRL (major-unit ratio)
@@ -276,7 +291,7 @@ Normalized by GCD at construction. `den == 0` throws `std::invalid_argument`.
 struct CurrencyDescription { std::string name; std::string symbol; uint8_t precision; };
 ```
 
-Pre-defined constants in `ratmoney::iso4217` (40+ currencies). `precision` is the number of decimal places: 0 for JPY, 2 for USD/EUR/BRL, 3 for KWD.
+Pre-defined constants in `ratmoney::iso4217` (~180 currencies — full ISO 4217 active-code coverage). `precision` is the number of decimal places: 0 for JPY, 2 for USD/EUR/BRL, 3 for KWD.
 
 ---
 
@@ -286,7 +301,7 @@ Pre-defined constants in `ratmoney::iso4217` (40+ currencies). `precision` is th
 Currency(int64_t units, Rational rate, CurrencyDescription description);
 ```
 
-Key methods — all return `std::expected<T, CurrencyError>`:
+Key methods — all return `std::expected<T, CurrencyError>` unless noted:
 
 | Method | Returns | Notes |
 |---|---|---|
@@ -294,6 +309,11 @@ Key methods — all return `std::expected<T, CurrencyError>`:
 | `subtract(other, mode)` | `Currency` | Same rate reconciliation |
 | `scale(factor, mode)` | `Currency` | Multiplies units by `factor`; rate/description preserved |
 | `ratio(other)` | `Rational` | Dimensionless ratio on same rate basis |
+| `percent(pct, mode)` | `Currency` | `this × pct / 100`; e.g. `{15,1}` = 15% |
+| `proportion(factor, mode)` | `Currency` | `this × factor`; semantic alias for `scale()` |
+| `allocate(n)` | `vector<Currency>` | Equal split into n parts; sum == `*this` exactly |
+| `allocate({r0,r1,...})` | `vector<Currency>` | Ratio split (largest-remainder); sum == `*this` exactly |
+| `to_double()` | `double` (noexcept) | Major-unit value; e.g. 12345 USD-cents → 123.45 |
 | `serialize()` | `Serialized` | Plain-old-data struct for storage/transport |
 | `Currency::deserialize(s)` | `Currency` | Validates on reconstruction |
 
@@ -356,9 +376,9 @@ Each `Currency` owns its data exclusively via pImpl. Concurrent operations on **
 |---|---|
 | `currency.h / .cpp` | Core types: `Rational`, `Currency`, `CurrencyPair`, `convert` |
 | `exchange_rate.h / .cpp` | `ExchangeRate` with bid/ask/fee/apply |
-| `iso4217.h` | 40+ `CurrencyDescription` constants |
+| `iso4217.h` | ~180 `CurrencyDescription` constants (full ISO 4217 active-code coverage) |
 | `fuzz_target.cpp` | libFuzzer entry point |
-| `test.cpp` | 80+ Google Test cases across 10+ suites |
+| `test.cpp` | 110+ Google Test cases across 15+ suites |
 | `main.cpp` | Demo / manual smoke test |
 | `CMakeLists.txt` | CMake build (options: `SANITIZE`, `FUZZ`) |
 | `cmake/RatMoneyConfig.cmake.in` | Package config template for `find_package` |
